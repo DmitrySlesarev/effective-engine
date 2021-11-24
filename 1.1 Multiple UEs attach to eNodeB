@@ -1,0 +1,124 @@
+#!/usr/bin/python3
+#-*-coding:utf-8-*-
+
+#Scenario 1.1 Multiple UEs attach to eNodeB
+
+import sys
+import re
+
+file = sys.argv[1] # amari.log
+rrc_dl = r'\[NAS\] DL 000{} EMM: {}'
+rrc_ul = r'\[NAS\] UL 000{} EMM: {}'
+scenario = r'Scenario 1.1 Multiple UEs attach to eNodeB'
+
+severe_errors = [r'Attach reject',
+         r'Tracking Area Update Reject',
+         r'Service reject',
+         r'Authentication failure',
+         r'Network failure',
+        ] 
+
+attach_request = [r'Message type = 0x41 (Attach request)', 
+          r'PDN type = 3 (IPv4v6)',
+         ]
+
+attach_accept = [r'PDN type = 3 (IPv4v6)',
+         #r'IPv4 = \d\d.\d\d.\d\d.\d\d',
+        ]
+
+def main():
+  pass
+
+def attachRequest(n, rrc, rrc_header = 'Attach request'):
+
+  global file, attach_request
+  foo = 0
+
+  for i in range(1, n + 1):
+
+    with open(file) as f:
+
+      while True:
+        line = f.readline()
+        if not line:
+          break
+
+        header = re.findall(rrc.format(str(i), rrc_header), line)
+
+        if header:
+          print(line, end='')
+          foo += 1
+
+  assert foo != 0, 'No UE(s) to attach!'
+
+  return foo
+
+def attachAccept(n, rrc, rrc_header = 'Attach accept'):
+  
+  global file, attach_accept
+  foo = 0
+
+  for i in range(1, n + 1):
+    
+    with open(file) as f:
+      
+      while True:
+        line = f.readline()
+        if not line:
+          break
+        
+        header = re.findall(rrc.format(str(i), rrc_header), line)
+
+        if header:
+          print(line, end='')
+          foo += 1
+
+  assert foo != 0 and i != 0, 'No UE(s) to attach!'
+
+  if foo == i:
+    return True
+  else:
+    return False 
+
+def errorChecker(rrc, severe_errors):
+
+  global file
+  count = 0
+
+  with open(file) as f:
+
+    while True:
+      line = f.readline()
+      if not line:
+        break
+
+      for i in severe_errors:
+        body = re.findall(rrc.format('\d', i), line)
+
+      if body:
+        print(body)
+        count +=1
+
+  if count > 0:
+    print(f"Severe errors: {count}")
+    return True
+  else:
+    return False
+    print("No severe errors detected")
+
+#main
+if name == 'main':
+  main()
+  print(scenario + ":")
+
+  #n = int(input("How many UE should be attached? ")) # 5 UE are in the amari.log file
+  n = int(sys.argv[2]) #i.e. python multiple_attach_1-1.py amari.log 5
+
+  attachRequest(n, rrc_ul)
+  verdict_1 = attachAccept(n, rrc_dl)
+  verdict_2 = errorChecker(rrc_dl, severe_errors)
+
+  if verdict_1 and not verdict_2:
+    print('*** PASS ***')
+  else:
+    print('*** FAIL ***')
