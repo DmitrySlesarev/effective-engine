@@ -1,0 +1,206 @@
+Dmitry Slesarev, [24 нояб. 2021 г., 19:35:53]:
+#!/usr/bin/python3
+#-*-coding:utf-8-*-
+
+#Scenario 2.1 Resource sharing
+
+import sys
+import re
+
+file = sys.argv[1] #amari.log
+rar = r'[MAC] DL    - 00 RAR'
+scenario = r'Scenario 2.1 Resource sharing'
+
+rarBody = dict(s0 = r'rapid',
+    s1 = r' ta\=\d',
+    s2 = r'ul_grant:',
+    s3 = r'sc_spacing\=\d',
+    s4 = r'i_sc\=\d',
+    s5 = r'i_delay\=\d',
+    s6 = r'i_rep\=\d',
+    s7 = r'mcs\=\d',
+    s8 = r'reserved\=0x\d',
+    s9 = r'tc-rnti=0x\d\d\d',)
+
+
+def main():
+  pass
+
+def getTcrnti(rar, rarBody):
+
+  global file
+  rnti = list()
+  #counters
+  foo = 0
+  p0=p1=p2=p3=p4=p5=p6=p7=p8=p9=0
+
+  with open(file) as f:
+
+    while True:
+      line = f.readline()
+      if not line:
+        break
+
+      if rar in line:
+        foo += 1
+
+      ie0 = re.findall(rarBody.get('s0'), line)
+      if ie0:
+        p0 += 1
+
+      ie1 = re.findall(rarBody.get('s1'), line)
+      if ie1:
+        p1 += 1
+
+      ie2 = re.findall(rarBody.get('s2'), line)
+      if ie2:
+        p2 += 1
+
+      ie3 = re.findall(rarBody.get('s3'), line)
+      if ie3:
+        p3 += 1
+
+      ie4 = re.findall(rarBody.get('s4'), line)
+      if ie4:
+        p4 += 1
+
+      ie5 = re.findall(rarBody.get('s5'), line)
+      if ie5:
+        p5 += 1
+
+      ie6 = re.findall(rarBody.get('s6'), line)
+      if ie6:
+        p6 += 1
+
+      ie7 = re.findall(rarBody.get('s7'), line)
+      if ie7:
+        p7 += 1
+
+      ie8 = re.findall(rarBody.get('s8'), line)
+      if ie8:
+        p8 += 1
+
+      ie9 = re.findall(rarBody.get('s9'), line)
+      if ie9:
+        p9 += 1
+        rnti.append(line[-7:-1:])
+
+  if foo == p0/2 and p0/2 == p1 and \
+    p1 == p2 and p2 == p3 and \
+    p3 == p4 and p4 == p5 and \
+    p5 == p6 and p6 == p8 and \
+    p8 == p9:
+    return rnti
+  else:
+    raise Exception('Amari log contains discrepancies in RAR!')
+
+def verifyTcrnti(rnti_list):
+  #get max value of 2 bytes/ 16bits i.e. tc-rnti length
+  max = 2 ** 16 - 1
+  rnti_set = set(rnti_list)
+  if len(rnti_list) <= max:
+    raise Exception("Too few values of tc-rnti's assigned!")
+  else:
+    len(rnti_set) < len(rnti_list)
+    return True
+
+
+#main
+if name == 'main':
+  main()
+  print(scenario + ":")
+
+  var = getTcrnti(rar, rarBody)
+  verdict1 = verifyTcrnti(var)
+  try:
+    if verdict1:
+      print('*** PASS ***')
+    else:
+      print('*** FAIL ***')
+  except Exception:
+    print('*** FAIL ***')
+
+Dmitry Slesarev, [24 нояб. 2021 г., 19:36:29]:
+#!/usr/bin/python3
+#-*-coding:utf-8-*-
+
+#Scenario 1.3 PAGING single UE
+
+import sys
+import re
+
+file = sys.argv[1] # amari.log
+rrc = r'\[NAS\] DL 000{} EMM: {}'
+scenario = r'Scenario 1.3 PAGING single UE'
+
+
+def main():
+  pass
+
+def attachAccept(n, rrc, rrc_header='Attach accept'):
+
+  global file, attach_accept
+  #counters
+  foo = 0
+  bar = 0
+
+  for i in range(1, n + 1):
+
+    with open(file) as f:
+
+      while True:
+        line = f.readline()
+        if not line:
+          break
+
+        header = re.findall(rrc.format(str(i), rrc_header), line)
+
+        if header:
+          #print(line, end='')
+          foo += 1
+
+  if foo == i:
+    return True
+  else:
+    return False
+
+def uePaging(n, rrc, rrc_header = 'Paging-NB'):
+
+  global file
+  foo = 0
+
+  for i in range(1, n + 1):
+
+    with open(file) as f:
+
+      while True:
+        line = f.readline()
+        if not line:
+          break
+
+        header = re.findall(rrc.format(str(i), rrc_header), line)
+
+        if header:
+          print(line, end='')
+          foo += 1
+
+  assert foo != 0, 'No paging messages in script!'
+
+  return foo
+
+# main
+if name == 'main':
+  main()
+  print(scenario + ":")
+
+  n = int(sys.argv[2])  # i.e. python paging_1-3.py amari.log 5
+
+  try:
+    verdict_1 = uePaging(n, rrc)
+    if verdict_1:
+      print('*** PASS ***')
+    else:
+      print('*** FAIL ***')
+  except AssertionError:
+    print('No paging messages in script!')
+    print('**** FAIL ***')
