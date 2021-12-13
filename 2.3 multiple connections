@@ -1,0 +1,286 @@
+#!/usr/bin/python3
+
+#-*-coding:utf-8-*-
+
+
+
+#Scenario 2.3 Multiple UEs DL transmissions
+
+
+
+import sys
+
+import re
+
+from datetime import datetime
+
+
+
+file = sys.argv[1] # amari.log
+
+num = int(sys.argv[2]) # i.e. number of UEs to attach
+
+rrcDL = '[RRC] DL 000{} d001 DCCH-NB: DL information transfer' # [RRC] DL 0001 d001 DCCH-NB: DL information transfer
+
+rrcUL = '[RRC] UL 000{} d001 DCCH-NB: UL information transfer' # [RRC] UL 0001 d001 DCCH-NB: UL information transfer
+
+scenario = r'Scenario 2.3 Multiple UEs DL transmissions'
+
+dltransferBody = dict( ie1 = r'dlInformationTransfer-r13',
+
+ie2 = r'criticalExtensions c1: dlInformationTransfer-r13',
+
+ie3 = r'dedicatedInfoNAS-r13')
+
+avg_delay_DL = 0
+
+
+
+
+
+def main():
+
+pass
+
+
+
+#get hex strings from dedicatedInfoNAS-r13 container
+
+def confirmData(n, hdr, hdr2, msg):
+
+
+
+global file
+
+
+
+dataSheet = {}
+
+deltas = {}
+
+#counters
+
+p0=p1=p2=p3=0
+
+
+def countDelta(time1, time2):
+
+hour1 = int(time1[0:2:])
+
+minute1 = int(time1[3:5:])
+
+second1 = int(time1[6:8:])
+
+microsecond1 = int(time1[9::] + '000')
+
+timestamp1 = datetime(2021, 12, 31, hour1, minute1, second1, microsecond1)
+
+print(timestamp1)
+
+
+
+hour2 = int(time2[0:2:])
+
+minute2 = int(time2[3:5:])
+
+second2 = int(time2[6:8:])
+
+microsecond2 = int(time2[9::] + '000')
+
+timestamp2 = datetime(2021, 12, 31, hour2, minute2, second2, microsecond2)
+
+print(timestamp2)
+
+
+
+if timestamp2 > timestamp1:
+
+delta = timestamp2 - timestamp1
+
+else:
+
+delta = timestamp1 - timestamp2
+
+
+
+return delta
+
+
+
+for i in range(1, n+1):
+
+
+
+with open(file) as f:
+
+
+
+while True:
+
+
+
+line = f.readline()
+
+
+
+if not line:
+
+break
+
+
+
+if hdr.format(str(i)) in line:
+
+tstamp = line[0:12]
+
+print(line)
+
+
+
+#get the transmitted data
+
+while True:
+
+line = f.readline()
+
+
+
+ie1 = re.findall(msg.get('ie1'), line)
+
+if ie1 and not p1:
+
+p1 += 1
+
+print("ie1 match {} {} {}".format(ie1, ">>>", line.strip()))
+
+
+
+ie2 = re.findall(msg.get('ie2'), line)
+
+if ie2 and not p2:
+
+p2 += 1
+
+print("ie2 match {} {} {}".format(ie2, ">>>", line.strip()))
+
+
+
+ie3 = re.findall(msg.get('ie3'), line)
+
+if ie3:
+
+p3 += 1
+
+print("ie3 match {} {} {}".format(ie3, ">>>", line.strip()))
+
+dataSheet["Device #" + str(i) + ", Data transfer #"+ str(p3)] = line[36:-3:]
+
+#resetting the counters
+
+p1=p2=0
+
+print('\n***')
+
+break
+
+
+
+#get the timestamp
+
+while True:
+
+line = f.readline()
+
+if hdr2.format(str(i)) in line:
+
+tstamp2 = line[0:12]
+
+break
+
+
+deltas["Device #" + str(i) + ", Data transfer #"+ str(p3)] = countDelta(tstamp, tstamp2)
+
+
+
+return dataSheet, deltas
+
+
+
+#parse hex strings from dedicatedInfoNAS-r13 container
+
+def checkData(data_list):
+
+
+
+#counter
+
+foo = 0
+
+
+
+for i, j in data_list.items():
+
+j = bytearray.fromhex(str(j))
+
+print(i,":", len(j), "bytes")
+
+if round(len(j)) <= 5:
+
+foo += 1
+
+
+
+print("\n***")
+
+
+
+if not foo:
+
+return True
+
+else:
+
+return False
+
+
+
+#verify delays
+
+def checkTime(time_deltas):
+
+for i, j in time_deltas.items:
+
+print("Delta #", i, " with timestamp", j)
+
+
+
+
+
+if __name__ == "__main__":
+
+main()
+
+var, deltas = confirmData(num, rrcDL, rrcUL, dltransferBody)
+
+verdict = checkData(var)
+
+#verdict2 = checkTime(deltas)
+
+for i in deltas:
+
+print(i)
+
+try:
+
+if verdict:
+
+print(scenario + "."*(100 - len(scenario) - 4) + 'PASS')
+
+else:
+
+print(scenario + "."*(100 - len(scenario) - 4) + 'FAIL')
+
+except Exception:
+
+print('*** FAIL ***')
+
